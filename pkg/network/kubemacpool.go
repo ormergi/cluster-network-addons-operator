@@ -127,6 +127,10 @@ func renderKubeMacPool(conf *cnao.NetworkAddonsConfigSpec, manifestDir string, c
 	data.Data["TLSSecurityProfileCiphers"] = strings.Join(ciphers, ",")
 	data.Data["TLSMinVersion"] = TLSVersionToHumanReadable(tlsMinVersion)
 
+	data.Data["ClusterDNSNamespace"] = os.Getenv("CLUSTER_DNS_NAMESPACE")
+	data.Data["ClusterDNSLabelValue"] = os.Getenv("CLUSTER_DNS_SEL_KEY")
+	data.Data["ClusterDNSLabelKey"] = os.Getenv("CLUSTER_DNS_SEL_VALUE")
+
 	objs, err := render.RenderDir(filepath.Join(manifestDir, "kubemacpool"), &data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to render kubeMacPool manifests")

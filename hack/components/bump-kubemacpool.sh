@@ -59,6 +59,12 @@ patches:
   target:
     version: v1
     kind: Namespace
+- path: cnao_net-pol-dns-set-selectors_patch.yaml
+  target:
+    group: networking.k8s.io
+    version: v1
+    kind: NetworkPolicy
+    name: allow-egress-to-dns
 EOF
 
     cat <<EOF > config/cnao/cnao_kubemacpool_manager_patch.yaml
@@ -145,6 +151,16 @@ EOF
   path: /metadata/labels
 EOF
 
+    cat <<EOF > config/cnao/cnao_net-pol-dns-set-selectors_patch.yaml
+- op: replace
+  path: /spec/egress/0/to/0/namespaceSelector/matchLabels/kubernetes.io~1metadata.name
+  value: "{{ .ClusterDNSNamespace }}"
+- op: remove
+  path: /spec/egress/0/to/0/podSelector/matchLabels/k8s-app
+- op: add
+  path: /spec/egress/0/to/0/podSelector/matchLabels/{{ .ClusterDNSLabelKey }}
+  value: "{{ .ClusterDNSLabelValue }}"
+EOF
 
     (
         cd config/cnao
