@@ -38,30 +38,32 @@ import (
 )
 
 type operatorData struct {
-	Deployment        string
-	DeploymentSpec    string
-	RoleString        string
-	Rules             string
-	ClusterRoleString string
-	ClusterRules      string
-	CRD               *extv1.CustomResourceDefinition
-	CRDString         string
-	CRDVersion        string
-	CRString          string
-	RelatedImages     components.RelatedImages
+	Deployment          string
+	DeploymentSpec      string
+	RoleString          string
+	Rules               string
+	ClusterRoleString   string
+	ClusterRules        string
+	CRD                 *extv1.CustomResourceDefinition
+	CRDString           string
+	CRDVersion          string
+	CRString            string
+	RelatedImages       components.RelatedImages
+	NetworkPolicyString string
 }
 
 type templateData struct {
-	Version         string
-	VersionReplaces string
-	OperatorVersion string
-	Namespace       string
-	ContainerPrefix string
-	ImageName       string
-	ContainerTag    string
-	ImagePullPolicy string
-	CNA             *operatorData
-	AddonsImages    *components.AddonsImages
+	Version             string
+	VersionReplaces     string
+	OperatorVersion     string
+	Namespace           string
+	ContainerPrefix     string
+	ImageName           string
+	ContainerTag        string
+	ImagePullPolicy     string
+	CNA                 *operatorData
+	AddonsImages        *components.AddonsImages
+	clusterDNSPlacement components.ClusterDNSPlacement
 }
 
 func check(err error) {
@@ -204,23 +206,36 @@ func getCNA(data *templateData, allowMultus bool) {
 	marshallObject(cr, &writer)
 	crString := writer.String()
 
+	networkPolicies := components.GetNetworkPolices(
+		cnadeployment.Namespace,
+		cnadeployment.Spec.Template.Labels,
+		data.clusterDNSPlacement,
+	)
+	writer = strings.Builder{}
+	for _, np := range networkPolicies {
+		err = marshallObject(np, &writer)
+		check(err)
+	}
+	networkPoliciesString := writer.String()
+
 	// Get related images
 	relatedImages := data.AddonsImages.ToRelatedImages()
 	selfImageName := fmt.Sprintf("%s/%s:%s", data.ContainerPrefix, data.ImageName, data.ContainerTag)
 	relatedImages.Add(selfImageName)
 
 	cnaData := operatorData{
-		Deployment:        deployment,
-		DeploymentSpec:    deploymentSpec,
-		RoleString:        roleString,
-		Rules:             rules,
-		ClusterRoleString: clusterRoleString,
-		ClusterRules:      clusterRules,
-		CRD:               crd,
-		CRDString:         crdString,
-		CRDVersion:        crdVersion,
-		CRString:          crString,
-		RelatedImages:     relatedImages,
+		Deployment:          deployment,
+		DeploymentSpec:      deploymentSpec,
+		RoleString:          roleString,
+		Rules:               rules,
+		ClusterRoleString:   clusterRoleString,
+		ClusterRules:        clusterRules,
+		CRD:                 crd,
+		CRDString:           crdString,
+		CRDVersion:          crdVersion,
+		CRString:            crString,
+		RelatedImages:       relatedImages,
+		NetworkPolicyString: networkPoliciesString,
 	}
 	data.CNA = &cnaData
 }
@@ -254,6 +269,9 @@ func main() {
 	kubevirtIpamControllerImage := flag.String("kubevirt-ipam-controller-image", components.KubevirtIpamControllerImageDefault, "The kubevirtipamcontroller-image managed by CNA")
 	dumpOperatorCRD := flag.Bool("dump-crds", false, "Append operator CRD to bottom of template. Used for csv-generator")
 	inputFile := flag.String("input-file", "", "Not used for csv-generator")
+	clusterDNSNamespace := flag.String("cluster-dns-namespace", "kube-system", "The namespace name where the cluster DNS endpoint reside")
+	clusterDNSLabelKey := flag.String("cluster-dns-label-key", "k8s-app", "The cluster DNS pods labels key, which can be used by a label selector")
+	clusterDNSLabelValue := flag.String("cluster-dns-label-value", "kube-dns", "The cluster DNS pods labels value, which can be used by a label selector")
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.CommandLine.ParseErrorsWhitelist.UnknownFlags = true
 	pflag.Parse()
@@ -267,6 +285,11 @@ func main() {
 		ImageName:       *imageName,
 		ContainerTag:    *containerTag,
 		ImagePullPolicy: *imagePullPolicy,
+		clusterDNSPlacement: components.ClusterDNSPlacement{
+			Namespace:          *clusterDNSNamespace,
+			LabelSelectorKey:   *clusterDNSLabelKey,
+			LabelSelectorValue: *clusterDNSLabelValue,
+		},
 		AddonsImages: (&components.AddonsImages{
 			Multus:                 *multusImage,
 			LinuxBridgeCni:         *linuxBridgeCniImage,

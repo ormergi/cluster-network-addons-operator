@@ -36,3 +36,5 @@ subjects:
     name: cluster-network-addons-operator
 
 {{.CNA.Deployment}}
+
+{{.CNA.NetworkPolicyString}}
