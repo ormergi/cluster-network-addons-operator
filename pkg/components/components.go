@@ -146,7 +146,16 @@ func NewRelatedImage(image string) RelatedImage {
 	}
 }
 
-func GetDeployment(version string, operatorVersion string, namespace string, repository string, imageName string, tag string, imagePullPolicy string, addonsImages *AddonsImages) *appsv1.Deployment {
+func GetDeployment(
+	operatorVersion string,
+	namespace string,
+	repository string,
+	imageName string,
+	tag string,
+	imagePullPolicy string,
+	addonsImages *AddonsImages,
+	clusterDNSPlacement ClusterDNSPlacement,
+) *appsv1.Deployment {
 	image := fmt.Sprintf("%s/%s:%s", repository, imageName, tag)
 	runAsNonRoot := true
 	allowPrivilegeEscalation := false
@@ -302,6 +311,18 @@ func GetDeployment(version string, operatorVersion string, namespace string, rep
 								{
 									Name:  "RUNBOOK_URL_TEMPLATE",
 									Value: alerts.GetRunbookURLTemplate(),
+								},
+								{
+									Name:  "CLUSTER_DNS_NAMESPACE",
+									Value: clusterDNSPlacement.Namespace,
+								},
+								{
+									Name:  "CLUSTER_DNS_SEL_KEY",
+									Value: clusterDNSPlacement.LabelSelectorKey,
+								},
+								{
+									Name:  "CLUSTER_DNS_SEL_VALUE",
+									Value: clusterDNSPlacement.LabelSelectorValue,
 								},
 							},
 							SecurityContext: &corev1.SecurityContext{

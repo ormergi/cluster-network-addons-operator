@@ -143,7 +143,6 @@ func getCNA(data *templateData, allowMultus bool) {
 
 	// Get CNA Deployment
 	cnadeployment := components.GetDeployment(
-		data.Version,
 		data.OperatorVersion,
 		data.Namespace,
 		data.ContainerPrefix,
@@ -151,6 +150,7 @@ func getCNA(data *templateData, allowMultus bool) {
 		data.ContainerTag,
 		data.ImagePullPolicy,
 		data.AddonsImages,
+		data.clusterDNSPlacement,
 	)
 	err := marshallObject(cnadeployment, &writer)
 	check(err)
